@@ -1,18 +1,36 @@
-import React, { createContext, useContext } from 'react';
-import useTheme from '../hooks/useTheme';
+import React, { createContext, useContext, useEffect, useState } from 'react';
 
 type Theme = 'light' | 'dark';
 
-type ThemeContextType = {
+interface ThemeContextValue {
   theme: Theme;
   toggleTheme: () => void;
-};
+}
 
-const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
+const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
 
-export const ThemeProvider: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
-  // Reuse existing theme hook for persistence and data-theme management
-  const { theme, toggleTheme } = useTheme();
+export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [theme, setTheme] = useState<Theme>(() => {
+    try {
+      const t = typeof window !== 'undefined' ? localStorage.getItem('cch-theme') as Theme | null : null;
+      return t ?? 'light';
+    } catch {
+      return 'light';
+    }
+  });
+
+  useEffect(() => {
+    try {
+      document.documentElement.setAttribute('data-theme', theme);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('cch-theme', theme);
+      }
+    } catch {
+      // ignore
+    }
+  }, [theme]);
+
+  const toggleTheme = () => setTheme((t) => (t === 'light' ? 'dark' : 'light'));
 
   return (
     <ThemeContext.Provider value={{ theme, toggleTheme }}>
@@ -21,12 +39,12 @@ export const ThemeProvider: React.FC<React.PropsWithChildren<{}>> = ({ children 
   );
 };
 
-export const useThemeContext = (): ThemeContextType => {
-  const context = useContext(ThemeContext);
-  if (!context) {
+export const useThemeContext = (): ThemeContextValue => {
+  const ctx = useContext(ThemeContext);
+  if (!ctx) {
     throw new Error('useThemeContext must be used within a ThemeProvider');
   }
-  return context;
+  return ctx;
 };
 
 export default ThemeContext;
